@@ -7,6 +7,8 @@ Uses YC's public Algolia search API instead of web scraping
 import requests
 import sqlite3
 import json
+import re
+import time
 from typing import List, Dict, Optional
 
 class YCApiScraper:
@@ -136,15 +138,22 @@ class YCApiScraper:
             'founders': company.get('founders', [])
         }
     
-    def save_companies(self, companies: List[Dict]):
-        """Save companies to database"""
+    def save_companies(self, companies: List[Dict], fetch_founders: bool = True):
+        """Save companies to database
+        
+        Args:
+            companies: List of company dictionaries from API
+            fetch_founders: If True, fetch founders from company pages
+        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         saved_count = 0
         updated_count = 0
+        founders_count = 0
         
-        for company_data in companies:
+        total = len(companies)
+        for idx, company_data in enumerate(companies, 1):
             company = self.normalize_company_data(company_data)
             
             if not company['name']:
@@ -184,9 +193,18 @@ class YCApiScraper:
                     company_id = cursor.lastrowid
                     saved_count += 1
                 
-                # Save founders if available
-                if company.get('founders') and isinstance(company['founders'], list):
-                    self.save_founders(cursor, company_id, company['name'], company['founders'])
+                # Fetch and save founders from company page
+                if fetch_founders:
+                    slug = company_data.get('slug')
+                    if slug:
+                        if idx % 50 == 0:
+                            print(f"  Fetching founders... ({idx}/{total})")
+                        founders = self.fetch_founders_from_page(slug)
+                        if founders:
+                            self.save_founders(cursor, company_id, company['name'], founders)
+                            founders_count += len(founders)
+                        # Small delay to be respectful
+                        time.sleep(0.1)
                 
             except Exception as e:
                 print(f"Error saving company {company['name']}: {e}")
@@ -194,6 +212,79 @@ class YCApiScraper:
         conn.commit()
         conn.close()
         print(f"\n✅ Saved {saved_count} new companies, updated {updated_count} existing companies")
+        if fetch_founders:
+            print(f"   Fetched {founders_count} founders from company pages")
+    
+    def fetch_founders_from_page(self, slug: str) -> List[Dict]:
+        """Fetch founders data from a company page by parsing JSON data"""
+        try:
+            url = f"https://www.ycombinator.com/companies/{slug}"
+            response = requests.get(url, headers={
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+            })
+            response.raise_for_status()
+            
+            # Extract JSON data from __NEXT_DATA__ script tag (try multiple patterns)
+            import re
+            json_match = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', response.text, re.DOTALL)
+            if not json_match:
+                # Try alternative pattern
+                json_match = re.search(r'window\.__NEXT_DATA__\s*=\s*({.+?});', response.text, re.DOTALL)
+            
+            if not json_match:
+                # Page might be dynamically loaded - return empty for now
+                # You can use the Selenium scraper for founders if needed
+                return []
+            
+            data = json.loads(json_match.group(1))
+            founders = []
+            
+            # Recursively search for founder data
+            def find_founders(obj, depth=0):
+                if depth > 20:
+                    return
+                if isinstance(obj, dict):
+                    # Check if this looks like a founder object
+                    if 'name' in obj and isinstance(obj['name'], str):
+                        name = obj['name'].strip()
+                        # Check if it's a founder (not a YC partner)
+                        role = obj.get('role', '') or obj.get('title', '') or ''
+                        if name and len(name.split()) >= 2 and len(name.split()) <= 4:
+                            # Check if role or context suggests founder
+                            is_founder = False
+                            if 'founder' in str(role).lower() or 'founder' in str(obj).lower():
+                                is_founder = True
+                            
+                            if is_founder:
+                                founders.append({
+                                    'name': name,
+                                    'role': role if role else 'Founder',
+                                    'previous_company': obj.get('previousCompany') or obj.get('previous_company'),
+                                    'linkedin_url': obj.get('linkedin') or obj.get('linkedinUrl'),
+                                    'twitter_url': obj.get('twitter') or obj.get('twitterUrl') or obj.get('x'),
+                                    'yc_profile_url': obj.get('ycUrl') or obj.get('yc_url') or obj.get('profileUrl'),
+                                    'bio': obj.get('bio') or obj.get('description')
+                                })
+                    
+                    # Look for arrays of founders
+                    for key in ['founders', 'activeFounders', 'active_founders', 'team', 'people']:
+                        if key in obj and isinstance(obj[key], list):
+                            for item in obj[key]:
+                                find_founders(item, depth+1)
+                    
+                    # Recursively search
+                    for value in obj.values():
+                        find_founders(value, depth+1)
+                elif isinstance(obj, list):
+                    for item in obj:
+                        find_founders(item, depth+1)
+            
+            find_founders(data)
+            return founders
+            
+        except Exception as e:
+            print(f"    Error fetching founders for {slug}: {e}")
+            return []
     
     def save_founders(self, cursor, company_id: int, company_name: str, founders: List[Dict]):
         """Save founders to database"""
@@ -221,11 +312,15 @@ class YCApiScraper:
             except Exception as e:
                 print(f"  Error saving founder {founder.get('name')}: {e}")
     
-    def scrape_all(self):
-        """Scrape all companies from YC API"""
+    def scrape_all(self, fetch_founders: bool = True):
+        """Scrape all companies from YC API
+        
+        Args:
+            fetch_founders: If True, also fetch founders from individual company pages
+        """
         companies = self.get_all_companies()
         if companies:
-            self.save_companies(companies)
+            self.save_companies(companies, fetch_founders=fetch_founders)
             print(f"\n✅ Successfully scraped {len(companies)} companies using YC API!")
         else:
             print("❌ No companies found")

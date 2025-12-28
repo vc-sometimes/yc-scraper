@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YC Dashboard Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>YC Dashboard Connection Test</h1>
+    <p>This page tests if the Flask server is accessible.</p>
+    
+    <button onclick="testServer()">Test Server Connection</button>
+    
+    <div id="results"></div>
+    
+    <script>
+        async function testServer() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<p>Testing...</p>';
+            
+            const tests = [
+                { name: 'Port 5001 (Correct)', url: 'http://localhost:5001/api/stats' },
+                { name: 'Port 5000 (Wrong - AirPlay)', url: 'http://localhost:5000/api/stats' }
+            ];
+            
+            let html = '';
+            
+            for (const test of tests) {
+                try {
+                    const response = await fetch(test.url);
+                    const data = await response.json();
+                    html += `<div class="test-result success">
+                        ✅ ${test.name}: SUCCESS (${response.status})<br>
+                        Found ${data.total_companies} companies
+                    </div>`;
+                } catch (error) {
+                    html += `<div class="test-result error">
+                        ❌ ${test.name}: FAILED<br>
+                        Error: ${error.message}
+                    </div>`;
+                }
+            }
+            
+            results.innerHTML = html;
+        }
+        
+        // Auto-test on load
+        window.onload = testServer;
+    </script>
+</body>
+</html>
+

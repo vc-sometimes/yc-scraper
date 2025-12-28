@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YC Companies - Team Members</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-title">🚀 YC Companies Dashboard</h1>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Dashboard</a>
+                <a href="/companies" class="nav-link">Companies</a>
+                <a href="/members" class="nav-link active">Team Members</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Founders</h1>
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="Search members..." class="search-input">
+                <button onclick="searchMembers()" class="search-btn">Search</button>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">Loading team members...</div>
+        <div id="members-container" class="members-grid">
+            <!-- Members will be loaded here -->
+        </div>
+        <div id="no-results" class="no-results" style="display: none;">
+            No team members found matching your search.
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/members.js') }}"></script>
+</body>
+</html>
+

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YC Companies - All Companies</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-title">🚀 YC Companies Dashboard</h1>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Dashboard</a>
+                <a href="/companies" class="nav-link active">Companies</a>
+                <a href="/members" class="nav-link">Team Members</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>All Companies</h1>
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="Search companies..." class="search-input">
+                <button onclick="searchCompanies()" class="search-btn">Search</button>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">Loading companies...</div>
+        <div id="companies-container" class="companies-grid">
+            <!-- Companies will be loaded here -->
+        </div>
+        <div id="no-results" class="no-results" style="display: none;">
+            No companies found matching your search.
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/companies.js') }}"></script>
+</body>
+</html>
+

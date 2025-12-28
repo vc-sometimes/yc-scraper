@@ -16,7 +16,12 @@ A web dashboard for viewing Y Combinator companies and their founders.
 pip install -r requirements.txt
 ```
 
-2. Run the scraper to populate the database:
+2. Run the API scraper to populate the database (recommended - much faster!):
+```bash
+python3 scraper_api.py
+```
+
+Or use the old Selenium-based scrapers:
 ```bash
 python3 scrape_batch.py
 python3 scrape_founders_final.py
@@ -28,6 +33,14 @@ python3 start_server.py
 ```
 
 4. Open http://localhost:5001 in your browser
+
+## API Scraper
+
+The `scraper_api.py` uses YC's public Algolia search API, which is:
+- **Much faster** - No browser automation needed
+- **More reliable** - No session crashes or timeouts
+- **More efficient** - Direct API calls instead of page scraping
+- **Gets all data** - Companies, founders, locations, etc. in one call
 
 ## Database Schema
 
